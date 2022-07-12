@@ -1,7 +1,4 @@
-﻿using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
-using ImageUploader.Uploader;
+﻿using ImageUploader.Uploader;
 using Microsoft.Extensions.Configuration;
 
 
@@ -18,7 +15,8 @@ string storageAccountKey = config.GetSection("StorageAccountKey").Value;
 if (args.Length > 0)
 {
   Console.WriteLine($"using {args[0]} as read path");
-  var uploader = new BlobStorageUploader(args[0], storageAccountKey, storageAccountName);
+  var uploader = new BlobStorageUploader(storageAccountKey, storageAccountName);
+  await uploader.Upload(args[0], "azimgvizcontainer");
 }
 else
 {

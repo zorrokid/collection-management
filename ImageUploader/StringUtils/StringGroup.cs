@@ -7,9 +7,9 @@ public interface IStringGroup
 
 public class StringGroup : IStringGroup
 {
-  private readonly string[] names;
+  private readonly IEnumerable<string> names;
 
-  public StringGroup(string[] names)
+  public StringGroup(IEnumerable<string> names)
   {
     this.names = names;
   }

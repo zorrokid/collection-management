@@ -7,23 +7,21 @@ namespace ImageUploader.Uploader;
 
 public interface IBlobStorageUploader
 {
-  void Upload(string folderPath, string containerName, CancellationToken cancellationToken);
+  Task Upload(string directoryPath, string containerName, CancellationToken cancellationToken);
 }
 
 public class BlobStorageUploader : IBlobStorageUploader
 {
-  private readonly string uploadPath;
   private readonly BlobServiceClient blobServiceClient;
 
-  public BlobStorageUploader(string uploadPath, string storageAccountKey, string storageAccountName)
+  public BlobStorageUploader(string storageAccountKey, string storageAccountName)
   {
-    this.uploadPath = uploadPath;
     var sharedKeyCredential = new StorageSharedKeyCredential(storageAccountName, storageAccountKey);
     string blobUri = $"https://{storageAccountName}.blob.core.windows.net";
     blobServiceClient = new BlobServiceClient(new Uri(blobUri), sharedKeyCredential);
   }
 
-  public async void Upload(string directoryPath, string containerName, CancellationToken cancellationToken = default)
+  public async Task Upload(string directoryPath, string containerName, CancellationToken cancellationToken = default)
   {
     var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
 
@@ -33,7 +31,8 @@ public class BlobStorageUploader : IBlobStorageUploader
     // ...
     // filename.n.jpg
 
-    var files = Directory.GetFiles(directoryPath);
+    var files = Directory.EnumerateFiles(directoryPath)
+      .Select(f => Path.GetFileName(f));
     var groupedFiles = new StringGroup(files).GroupByPrefix(".");
 
     foreach (var key in groupedFiles.Keys)
@@ -41,7 +40,7 @@ public class BlobStorageUploader : IBlobStorageUploader
       foreach (var fileName in groupedFiles[key])
       {
         var blobClient = containerClient.GetBlobClient(fileName);
-        var fileStream = File.OpenRead(fileName);
+        var fileStream = File.OpenRead(Path.Combine(directoryPath, fileName));
         var uploadOptions = new BlobUploadOptions
         {
           Tags = new Dictionary<string, string>
@@ -49,8 +48,9 @@ public class BlobStorageUploader : IBlobStorageUploader
             { "fileGroup", key }
           }
         };
-
+        Console.WriteLine($"Start uploading file {fileName} with fileGroup-tag {key}");
         await blobClient.UploadAsync(fileStream, uploadOptions, cancellationToken);
+        Console.WriteLine($"Finish uploading file {fileName} with fileGroup-tag {key}");
       }
     }
   }
