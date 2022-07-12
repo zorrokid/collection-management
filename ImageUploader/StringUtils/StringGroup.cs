@@ -2,12 +2,19 @@ namespace ImageUploader.StringUtils;
 
 public interface IStringGroup
 {
-  Dictionary<string, List<string>> GroupByPrefix(string[] names, string separator);
+  Dictionary<string, List<string>> GroupByPrefix(string separator);
 }
 
 public class StringGroup : IStringGroup
 {
-  public Dictionary<string, List<string>> GroupByPrefix(string[] names, string separator)
+  private readonly string[] names;
+
+  public StringGroup(string[] names)
+  {
+    this.names = names;
+  }
+
+  public Dictionary<string, List<string>> GroupByPrefix(string separator)
   {
     var groupedFileNames = new Dictionary<string, List<string>>();
     var filenameStack = new Stack<string>(names);

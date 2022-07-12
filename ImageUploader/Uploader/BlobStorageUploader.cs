@@ -1,12 +1,13 @@
 using Azure.Storage;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using ImageUploader.StringUtils;
 
 namespace ImageUploader.Uploader;
 
 public interface IBlobStorageUploader
 {
-  void Upload(string folderPath, string containerName);
+  void Upload(string folderPath, string containerName, CancellationToken cancellationToken);
 }
 
 public class BlobStorageUploader : IBlobStorageUploader
@@ -22,7 +23,7 @@ public class BlobStorageUploader : IBlobStorageUploader
     blobServiceClient = new BlobServiceClient(new Uri(blobUri), sharedKeyCredential);
   }
 
-  public void Upload(string directoryPath, string containerName)
+  public async void Upload(string directoryPath, string containerName, CancellationToken cancellationToken = default)
   {
     var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
 
@@ -33,12 +34,24 @@ public class BlobStorageUploader : IBlobStorageUploader
     // filename.n.jpg
 
     var files = Directory.GetFiles(directoryPath);
-    var group = new StringGroup();
-    var groupedFiles = group.GroupByPrefix(files, ".");
+    var groupedFiles = new StringGroup(files).GroupByPrefix(".");
 
+    foreach (var key in groupedFiles.Keys)
+    {
+      foreach (var fileName in groupedFiles[key])
+      {
+        var blobClient = containerClient.GetBlobClient(fileName);
+        var fileStream = File.OpenRead(fileName);
+        var uploadOptions = new BlobUploadOptions
+        {
+          Tags = new Dictionary<string, string>
+          {
+            { "fileGroup", key }
+          }
+        };
 
-    // var directoryInfo = new DirectoryInfo(directoryPath);
-    // var files = directoryInfo.GetFileSystemInfos();
-    // var orderedFiles = files.OrderBy(f => f.Name);
+        await blobClient.UploadAsync(fileStream, uploadOptions, cancellationToken);
+      }
+    }
   }
 }
