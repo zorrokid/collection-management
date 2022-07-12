@@ -15,7 +15,7 @@ string storageAccountKey = config.GetSection("StorageAccountKey").Value;
 if (args.Length > 0)
 {
   Console.WriteLine($"using {args[0]} as read path");
-  var uploader = new BlobStorageUploader(storageAccountKey, storageAccountName);
+  var uploader = new BlobStorageUploader(storageAccountKey, storageAccountName, new NamePrefixTagResolver(), new BlobUriGenerator());
   await uploader.Upload(args[0], "azimgvizcontainer");
 }
 else
