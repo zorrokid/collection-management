@@ -24,10 +24,10 @@ public class StringGroupTests
     };
     var result = group.GroupByPrefix(input, ".");
     Assert.NotEmpty(result);
-    Assert.True(result.Keys.Count == 3, "Should have been keys for each string");
+    Assert.True(result.Keys.Count == 3, "Should have been keys for each string, since they only have prefix parts.");
     Assert.NotNull(result["aaa"]);
-    Assert.True(result["aaa"].Count == 1, "List should only have one item");
-    Assert.True(result["aaa"][0] == "aaa", "List should contain key in this special case when string has only prefix part");
+    Assert.True(result["aaa"].Count == 1);
+    Assert.True(result["aaa"][0] == "aaa", "List should contain same value as key in this special case when string has only prefix part.");
   }
 
   [Fact]
@@ -42,9 +42,9 @@ public class StringGroupTests
     };
     var result = group.GroupByPrefix(input, ".");
     Assert.NotEmpty(result);
-    Assert.True(result.Keys.Count == 3, "Should have been keys for each string");
+    Assert.True(result.Keys.Count == 3, "Should have been keys for each string since no duplicate prefixes.");
     Assert.NotNull(result["aaa"]);
-    Assert.True(result["aaa"].Count == 1, "List should only have one item");
+    Assert.True(result["aaa"].Count == 1, "List should only have one item since no duplicate prefixes.");
     Assert.True(result["aaa"][0] == "aaa.1");
   }
 
@@ -65,4 +65,23 @@ public class StringGroupTests
     Assert.True(result["aaa"].Count == 3);
     Assert.True(result["aaa"].Contains("aaa.1"));
   }
+
+  [Fact]
+  public void GroupByPrefix_StringsWithMoreThanOneSeparator_ResultWithFirstPartAsKey()
+  {
+    var group = new StringGroup();
+    var input = new string[]
+    {
+        "aaa.4.1",
+        "aaa.5.2",
+        "aaa.6.3"
+    };
+    var result = group.GroupByPrefix(input, ".");
+    Assert.NotEmpty(result);
+    Assert.True(result.Keys.Count == 1);
+    Assert.NotNull(result["aaa"]);
+    Assert.True(result["aaa"].Count == 3);
+    Assert.True(result["aaa"].Contains("aaa.4.1"));
+  }
+
 }
