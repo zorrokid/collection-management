@@ -1,12 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Specialized;
-using Azure.Storage.Sas;
+using ProcessImage.Services;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision;
-using Microsoft.Azure.CognitiveServices.Vision.ComputerVision.Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 
@@ -42,11 +39,14 @@ namespace ProcessImage
             log.LogInformation($"Got fileGroupTag {fileGroupTag}");
 
             // Create Shared Access Signature 
-            var sasUri = GetServiceSasUriForBlob(blobClient);
+            var sasUriProvider = new BlobStorageSasUriProvider(blobClient, log);
+            var sasUri = sasUriProvider.GetServiceSasUriForBlob();
 
+            // Create ComputerVisionClient and analyzer image content
             var credentials = new ApiKeyServiceClientCredentials(subscriptionKey);
             var client = new ComputerVisionClient(credentials) { Endpoint = endpoint };
-            var readResults = await AnalyzeImageContent(client, sasUri.AbsoluteUri);
+            var imageAnalyzer = new ImageAnalyzer(client);
+            var readResults = await imageAnalyzer.AnalyzeImageContent(sasUri.AbsoluteUri);
 
             await documentsOut.AddAsync(new
             {
@@ -54,59 +54,6 @@ namespace ProcessImage
                 sourceId = fileGroupTag,
                 readResults
             });
-        }
-
-        private static Uri GetServiceSasUriForBlob(BlobClient blobClient, string storedPolicyName = null)
-        {
-            // Check whether this BlobClient object has been authorized with Shared Key.
-            if (blobClient.CanGenerateSasUri)
-            {
-                // Create a SAS token that's valid for one hour.
-                BlobSasBuilder sasBuilder = new BlobSasBuilder()
-                {
-                    BlobContainerName = blobClient.GetParentBlobContainerClient().Name,
-                    BlobName = blobClient.Name,
-                    Resource = "b"
-                };
-
-                if (storedPolicyName == null)
-                {
-                    sasBuilder.ExpiresOn = DateTimeOffset.UtcNow.AddHours(1);
-                    sasBuilder.SetPermissions(BlobSasPermissions.Read |
-                        BlobSasPermissions.Write);
-                }
-                else
-                {
-                    sasBuilder.Identifier = storedPolicyName;
-                }
-
-                return blobClient.GenerateSasUri(sasBuilder);
-            }
-            else
-            {
-                Console.WriteLine(@"BlobClient must be authorized with Shared Key credentials to create a service SAS.");
-                return null;
-            }
-        }
-
-        static async Task<IList<ReadResult>> AnalyzeImageContent(ComputerVisionClient client, string urlFile)
-        {
-            // Analyze the file using Computer Vision Client
-            var textHeaders = await client.ReadAsync(urlFile);
-            string operationLocation = textHeaders.OperationLocation;
-
-            const int numberOfCharsInOperationId = 36;
-            string operationId = operationLocation.Substring(operationLocation.Length - numberOfCharsInOperationId);
-
-            // Read back the results from the analysis request
-            ReadOperationResult results;
-            do
-            {
-                results = await client.GetReadResultAsync(Guid.Parse(operationId));
-            }
-            while (results.Status == OperationStatusCodes.Running || results.Status == OperationStatusCodes.NotStarted);
-
-            return results.AnalyzeResult.ReadResults;
         }
     }
 }
