@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
@@ -96,7 +94,6 @@ namespace ProcessImage
             // Analyze the file using Computer Vision Client
             var textHeaders = await client.ReadAsync(urlFile);
             string operationLocation = textHeaders.OperationLocation;
-            Thread.Sleep(2000);
 
             const int numberOfCharsInOperationId = 36;
             string operationId = operationLocation.Substring(operationLocation.Length - numberOfCharsInOperationId);
@@ -107,8 +104,7 @@ namespace ProcessImage
             {
                 results = await client.GetReadResultAsync(Guid.Parse(operationId));
             }
-            while (results.Status == OperationStatusCodes.Running ||
-                results.Status == OperationStatusCodes.NotStarted);
+            while (results.Status == OperationStatusCodes.Running || results.Status == OperationStatusCodes.NotStarted);
 
             return results.AnalyzeResult.ReadResults;
         }
